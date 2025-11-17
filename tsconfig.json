@@ -1,0 +1,25 @@
+{
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "commonjs",
+        "allowJs": true,
+        "outDir": "./build",
+        "rootDir": "./src",
+        "downlevelIteration": true,
+        "strict": true,
+        "noImplicitAny": false,
+        "moduleResolution": "node",
+        "baseUrl": "./",
+        "paths": {
+            "@/*": ["./src/*"]
+        },
+        "allowSyntheticDefaultImports": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "resolveJsonModule": true
+    },
+    "include": ["src/**/*", "api"],
+
+    "exclude": ["node_modules", "build", "prisma", "prisma.config.ts"]
+}

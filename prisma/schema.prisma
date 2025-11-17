@@ -1,0 +1,364 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+
+  directUrl = env("DIRECT_URL")
+  url       = env("DATABASE_URL")
+}
+
+model User {
+  id           String       @id @default(uuid())
+  email        String       @unique
+  userName     String       @unique
+  firstName    String
+  lastName     String
+  phoneNumber  String?      @unique
+  password     String?
+  bio          String?
+  authProvider AuthProvider
+  googleId     String?      @unique
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  isVerified   Boolean      @default(false)
+  isDeleted    Boolean      @default(false)
+  deletedAt    DateTime?
+
+  author             Author?
+  comments           Comment[]
+  commentLikes       CommentLike[]
+  blogReads          BlogRead[]
+  blogLikes          BlogLike[]
+  sessions           Session[]
+  verificationTokens VerificationToken[]
+  admin              Admin?
+  adminInvitations   AdminInvitation[]
+
+  @@index([authProvider])
+  @@index([isDeleted])
+}
+
+model Author {
+  id               String  @id @default(uuid())
+  userId           String  @unique
+  authorBio        String?
+  profilePicture   String
+  sanityDocumentId String? @unique
+
+  status          AuthorStatus @default(PENDING)
+  appliedAt       DateTime     @default(now())
+  approvedAt      DateTime?
+  rejectedAt      DateTime?
+  rejectionReason String?
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  isSuspended     Boolean      @default(false)
+  isDeleted       Boolean      @default(false)
+  deletedAt       DateTime?
+
+  user    User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  blogs   Blog[]
+  socials AuthorSocial[]
+
+  @@index([status])
+  @@index([appliedAt])
+  @@index([userId, status])
+  @@index([isDeleted])
+  @@index([status, isDeleted])
+  @@map("authors")
+}
+
+model AuthorSocial {
+  id        String   @id @default(uuid())
+  authorId  String
+  platform  String
+  url       String
+  handle    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  author Author @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@unique([authorId, platform])
+  @@map("author_socials")
+}
+
+model Blog {
+  id                  String    @id @default(uuid())
+  sanityId            String    @unique
+  sanitySlug          String    @unique
+  authorId            String
+  
+  publishedAt         DateTime?
+  sanityUpdatedAt     DateTime?
+  genericViewCount    Int       @default(0)
+  verifiedViewCount   Int       @default(0)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  lastSyncedAt        DateTime  @default(now())
+  lastSyncedBy        String?
+  isDeleted           Boolean   @default(false)
+  deletedAt           DateTime?
+
+  // ✅ Explicit approval state
+  isApproved Boolean @default(false) @map("is_approved")
+
+  // Approval audit trail
+  approvedBy String?   @map("approved_by")
+  approvedAt DateTime? @map("approved_at")
+
+  // Unapproval audit trail
+  lastUnapprovedBy String?   @map("last_unapproved_by")
+  lastUnapprovedAt DateTime? @map("last_unapproved_at")
+  unapprovalReason String?   @map("unapproval_reason")
+
+  author   Author     @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  likes    BlogLike[]
+  reads    BlogRead[]
+  comments Comment[]
+
+  approver       Admin? @relation("ApprovedBlogs", fields: [approvedBy], references: [id], onDelete: SetNull)
+  lastUnapprover Admin? @relation("UnapprovedBlogs", fields: [lastUnapprovedBy], references: [id], onDelete: SetNull)
+
+  @@index([sanityId])
+  @@index([sanitySlug])
+  @@index([authorId])
+  @@index([publishedAt])
+  @@index([isDeleted])
+  @@index([isApproved])
+  @@index([isApproved, isDeleted]) // Fast filtering for public approved blogs
+  @@index([isApproved, publishedAt]) // Fast sorting of approved blogs by date
+  @@index([approvedBy])
+  @@index([lastUnapprovedBy])
+  @@map("blogs")
+}
+
+model Comment {
+  id        String    @id @default(uuid())
+  content   String
+  blogId    String
+  userId    String
+  parentId  String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  isEdited  Boolean   @default(false)
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+
+  blog    Blog          @relation(fields: [blogId], references: [id], onDelete: Cascade)
+  user    User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  parent  Comment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies Comment[]     @relation("CommentReplies")
+  likes   CommentLike[]
+
+  @@index([blogId])
+  @@index([userId])
+  @@index([parentId])
+  @@index([blogId, createdAt])
+  @@index([isDeleted])
+  @@map("comments")
+}
+
+model CommentLike {
+  id        String   @id @default(uuid())
+  userId    String
+  commentId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, commentId])
+  @@index([commentId])
+  @@map("comment_likes")
+}
+
+model BlogLike {
+  id        String   @id @default(uuid())
+  userId    String
+  blogId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  blog Blog @relation(fields: [blogId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, blogId])
+  @@index([blogId])
+  @@index([userId])
+  @@map("blog_likes")
+}
+
+model BlogRead {
+  id     String   @id @default(uuid())
+  userId String
+  blogId String
+  readAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  blog Blog @relation(fields: [blogId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, blogId])
+  @@index([blogId])
+  @@index([userId, readAt])
+  @@map("blog_reads")
+}
+
+model Session {
+  id         String   @id @default(uuid())
+  userId     String
+  userAgent  String?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+  expiresAt  DateTime
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokens RefreshToken[]
+
+  @@index([userId])
+  @@index([userId, expiresAt])
+  @@map("sessions")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  sessionId String
+  token     String   @unique
+  isRevoked Boolean  @default(false)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([token, expiresAt])
+  @@map("refresh_tokens")
+}
+
+model VerificationToken {
+  id        String    @id @default(uuid())
+  userId    String
+  token     String    @unique
+  type      TokenType @default(EMAIL_VERIFICATION)
+  createdAt DateTime  @default(now())
+  usedAt    DateTime?
+  expiresAt DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@map("verification_tokens")
+}
+
+model Admin {
+  id     String @id @default(uuid())
+  userId String @unique
+
+  invitedBy String?
+  invitedAt DateTime @default(now())
+
+  isActive         Boolean   @default(true)
+  isSuspended      Boolean   @default(false)
+  suspendedAt      DateTime?
+  suspendedBy      String?
+  suspensionReason String?
+
+  lastActiveAt DateTime  @default(now())
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  isDeleted    Boolean   @default(false)
+  deletedAt    DateTime?
+  deletedBy    String?
+
+  user     User    @relation(fields: [userId], references: [id], onDelete: Restrict)
+  inviter  Admin?  @relation("AdminInvites", fields: [invitedBy], references: [id], onDelete: SetNull)
+  invitees Admin[] @relation("AdminInvites")
+
+  sentInvitations AdminInvitation[]  @relation("SentInvitations")
+  activities      AdminActivityLog[]
+  approvedBlogs   Blog[]             @relation("ApprovedBlogs")
+  unapprovedBlogs Blog[]             @relation("UnapprovedBlogs")
+
+  @@index([userId])
+  @@index([isActive, isSuspended, isDeleted])
+  @@index([invitedBy])
+  @@map("admins")
+}
+
+model AdminActivityLog {
+  id        String   @id @default(uuid())
+  adminId   String
+  action    String
+  entity    String?
+  entityId  String?
+  metadata  Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  admin Admin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([entity, entityId])
+  @@map("admin_activity_logs")
+}
+
+model AdminInvitation {
+  id     String  @id @default(uuid())
+  email  String
+  userId String?
+  token  String  @unique
+
+  invitedBy String
+  sentAt    DateTime @default(now())
+  expiresAt DateTime
+
+  status       AdminInvitationStatus @default(PENDING)
+  acceptedAt   DateTime?
+  revokedAt    DateTime?
+  revokedBy    String?
+  revokeReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  inviter Admin @relation("SentInvitations", fields: [invitedBy], references: [id], onDelete: Restrict)
+  user    User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([email])
+  @@index([token])
+  @@index([status])
+  @@index([invitedBy])
+  @@index([expiresAt, status])
+  @@map("admin_invitations")
+}
+
+enum AuthProvider {
+  LOCAL
+  GOOGLE
+}
+
+enum AuthorStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+  EMAIL_CHANGE
+}
+
+enum AdminInvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
