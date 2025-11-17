@@ -4,3 +4,4 @@ node_modules
 prisma/seed.ts
 /src/generated/prisma
 build
+logs
