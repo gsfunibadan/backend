@@ -186,6 +186,7 @@ import { prisma } from "../../database/prisma";
 import { verifyPasswordSignature } from "../../utils/helpers";
 import { generateAuthTokens } from "../../utils/tokenService";
 import { AppResponse } from "../../utils/appResponse";
+import { env } from "@/config/enviroment";
 
 const MAX_SESSIONS_PER_USER = 4;
 
@@ -276,8 +277,19 @@ export const signIn = catchAsync(async (req: Request, res: Response) => {
 
     const tokens = await generateAuthTokens(user.id, sessionData);
 
-    // REMOVED: Cookie setting - Next.js will handle this
-    // Just return everything in the response body
+       res.cookie("refreshToken", tokens.refreshToken, {
+        httpOnly: true,
+        secure: env.NODE_ENV === "production",
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.cookie("accessToken", tokens.accessToken, {
+        httpOnly: true,
+        secure: env.NODE_ENV === "production",
+        sameSite: 'lax',
+        maxAge: 15 * 60 * 1000,
+    });
     return AppResponse(
         res,
         200,
