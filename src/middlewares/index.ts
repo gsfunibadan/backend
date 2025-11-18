@@ -35,7 +35,7 @@ export function setupMiddleware(app: Express): void {
         cors({
             origin:
                 env.NODE_ENV === "production"
-                    ? ["https://gofamint-ui.vercel.app/", "https://gofamint-ui.vercel.app"]
+                    ? ["https://gofamint-ui.vercel.app/", "https://gofamint-ui.vercel.app", "http://localhost:3000"]
                     : ["http://localhost:3000", "http://localhost:3001"],
             credentials: true,
         })
