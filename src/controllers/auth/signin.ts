@@ -186,7 +186,7 @@ import { prisma } from "../../database/prisma";
 import { verifyPasswordSignature } from "../../utils/helpers";
 import { generateAuthTokens } from "../../utils/tokenService";
 import { AppResponse } from "../../utils/appResponse";
-import { env } from "@/config/enviroment";
+import { env } from "../../config/enviroment";
 
 const MAX_SESSIONS_PER_USER = 4;
 
