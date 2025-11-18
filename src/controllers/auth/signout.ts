@@ -1,5 +1,3 @@
-// controllers/auth/signOut.ts
-
 import { catchAsync } from "../../utils/catchAsync";
 import { Response } from "express";
 import { AppError } from "../../utils/appError";
