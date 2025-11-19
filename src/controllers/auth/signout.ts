@@ -33,14 +33,14 @@ export const signOut = catchAsync(async (req: AuthRequest, res: Response) => {
     res.clearCookie("accessToken", {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production", // Use env check
-        sameSite: "strict",
+        sameSite: "lax",
         path: "/",
     });
 
     res.clearCookie("refreshToken", {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        sameSite: "lax",
         path: "/api/auth/refresh",
     });
 
