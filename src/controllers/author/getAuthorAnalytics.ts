@@ -18,6 +18,7 @@ interface AuthorAnalytics {
         lastName: string;
         userName: string;
         email: string;
+        authorBio: string;
         profilePicture: string | null;
     };
 }
@@ -40,11 +41,13 @@ export const getAuthorAnalytics = catchAsync(async (req: AuthRequest, res: Respo
             isSuspended: true,
             sanityDocumentId: true,
             profilePicture: true,
+           authorBio: true,
             user: {
                 select: {
                     firstName: true,
                     lastName: true,
                     userName: true,
+                    
                     email: true,
                     isDeleted: true,
                 },
@@ -151,6 +154,7 @@ export const getAuthorAnalytics = catchAsync(async (req: AuthRequest, res: Respo
             userName: author.user.userName,
             email: author.user.email,
             profilePicture: author.profilePicture || null,
+            authorBio: author.authorBio,
         },
     };
 
